@@ -1,18 +1,22 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <map>
+#include <random>
+#include <ctime>
+#include <utility>
 
 using namespace std;
 
 
-#define ALPHA	1			// вес фермента
-#define BETTA	2			// коэффициент эвристики
-
 #define tau0 10
 
+#define ALPHA	1			// вес фермента
+#define BETTA	4			// коэффициент эвристики
 #define T_MAX 500			// время жизни колонии
 #define Q 10			// количество
 #define RHO	0.6			// коэффициент испарения феромона
+
 
 class Edge;
 
@@ -77,28 +81,32 @@ double probability(const Edge& edge, const Ant& ant) {
             sum += (pow(edge1->pheromone, ALPHA) * pow((double)1/(double)edge1->length, BETTA));
     }
     // возвращаем значение вероятности
-    return pow(edge.pheromone, ALPHA) * pow((double)1/(double)edge.length, BETTA) / sum;
+    return 100 * pow(edge.pheromone, ALPHA) * pow((double)1/(double)edge.length, BETTA) / sum;
 }
 
 Edge* getEdge(const Ant& ant){
-    double p_max = 0;
-    Edge* resultEdge = nullptr;
+    double sum = 0;
+    map<Edge*, pair<double, double>> resultEdges;
     for (Edge *edge : ant.curCity->edges) {
         // Проверка вероятности перехода по ребру edge
         double p = probability(*edge, ant);
-        if (p > p_max) {
-            p_max = p;
-            resultEdge = edge;
+        if(p != 0) {
+            resultEdges[edge] = make_pair(sum, sum + p);
+            sum += p;
         }
     }
-    if(resultEdge == nullptr){
+    double random = (double) rand() * sum / RAND_MAX;
+    if(sum == 0){
         for (Edge *edge : ant.curCity->edges) {
             // Проверка вероятности перехода по ребру edge
             if(edge->getAnother(*ant.curCity) == ant.startCity)
                 return edge;
         }
     }
-    return resultEdge;
+    for (Edge *edge : ant.curCity->edges) {
+        if(resultEdges[edge].first <= random && resultEdges[edge].second >= random)
+            return edge;
+    }
 }
 
 Ant* aco(int **d, int n){
@@ -111,7 +119,7 @@ Ant* aco(int **d, int n){
         cities.push_back(temp);
     }
     int M = 0.0222 * (n * n) - 0.1333*n + 8;
-    cout << M << endl;
+    //cout << M << endl;
     for (int i = 0; i < M && i < n; ++i) {
         Ant *ant = new Ant(*cities[i]);
         ants.push_back(ant);
@@ -128,6 +136,7 @@ Ant* aco(int **d, int n){
             }
         }
     }
+
     for(int t = 0; t < T_MAX; t++) {
         for (Ant *ant : ants) {
             ant->path.push_back(ant->curCity);
@@ -173,6 +182,7 @@ Ant* aco(int **d, int n){
 }
 
 int main() {
+    srand (time(NULL));
     int n;
     cout<<"input number of cities"<<endl;
     cin >> n;
